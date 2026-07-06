@@ -1,35 +1,65 @@
 use num_traits::{Num, NumCast};
 use std::fmt;
-use std::ops::Range;
 use std::iter::Map;
-use std::ops::{ Add, Sub, Mul, Div };
+use std::ops::{ Add, Sub, Mul, Div, Range, Index, IndexMut };
+
+trait Numeric: Clone + Copy + Num + NumCast {}
+impl Numeric for i32 {}
+impl Numeric for i64 {}
+impl Numeric for u32 {}
+impl Numeric for u64 {}
+impl Numeric for usize {}
+impl Numeric for isize {}
+impl Numeric for f32 {}
+impl Numeric for f64 {}
 
 #[derive(PartialEq, Eq)]
-pub struct Matrix<T: Num + NumCast  + Clone + Copy> {
+pub struct Matrix<T: Numeric> {
 	grid: Vec<T>,
 	m: usize, n: usize,
 }
 
-impl<T> Matrix<T> where T: Num + NumCast + Clone + Copy {
+impl<T> Matrix<T> where T: Numeric {
 	// Init
-	pub fn new<F>(m: usize, n: usize, f: F) -> Self // O(M*N); O(M*N)
+	pub fn null(m: usize, n: usize) -> Self { // O(M*N); O(M*N)
+		Matrix {
+			grid: vec![T::zero(); m*n],
+			m, n
+		}
+	}
+	pub fn fill(val: T, m: usize, n: usize) -> Self { // O(M*N); O(M*N)
+		Matrix {
+			grid: vec![val; m*n],
+			m, n
+		}
+	}
+	pub fn from_fn<F>(m: usize, n: usize, f: F) -> Self // O(M*N); O(M*N)
 	where F: Fn(T, T) -> T
 	{
-		let mut grid = vec![T::zero(); m*n];
+		let mut matrix = Self::null(m, n);
 		for i in 0..m {
 			for j in 0..n {
-				grid[j + i * n] = f(T::from(i+1).unwrap(), T::from(j+1).unwrap());
+				matrix[i][j] = f(T::from(i+1).unwrap(), T::from(j+1).unwrap());
 			}
 		}
-		Self { grid, m, n }
+		matrix
 	}
-	pub fn from(vec: Vec<Vec<T>>) -> Self { // O(M*N); O(1)
+	pub fn from_vec(vec: Vec<Vec<T>>) -> Self { // O(M*N); O(1)
 		let (m, n) = (vec.len(), vec[0].len());
 		assert!(vec.iter().all(|row| row.len() == n));
 		Self {
 			grid: vec.into_iter().flatten().collect(),
 			m, n
 		}
+	}
+	pub fn from_scalar(m: usize, n: usize, scalar: T) -> Self { // O(M*N); O(1)
+		Matrix::from_fn(m, n, |i, j|
+			if i == j {
+				scalar
+			} else {
+				T::zero()
+			}
+		)
 	}
 	// Get
 	pub fn get(&self, i: usize, j: usize) -> Option<T> { // O(1); O(1)
@@ -147,24 +177,35 @@ impl<T> Matrix<T> where T: Num + NumCast + Clone + Copy {
 			None
 		}
 	}
-}
-
-#[macro_export]
-macro_rules! matrix {
-	( $([ $( $elem:expr ),* ]),* $(,)? ) => {
-		{
-			let mut grid: Vec<Vec<_>> = vec![
-				$( vec![ $( $elem ),* ] ),*
-			];
-			let (m, n) = (grid.len(), grid[0].len());
-			assert!(grid.iter().all(|row| row.len() == n));
-			Matrix::from(grid)
-		}
+	// Transposition
+	pub fn transposed(&self) -> Self { // O(M*N); O(1)
+		Matrix::from_fn(self.n, self.m, |i, j|
+			self.get(
+				<usize as NumCast>::from(j).unwrap(),
+				<usize as NumCast>::from(i).unwrap(),
+			).unwrap()
+		)
 	}
 }
-pub(crate) use matrix;
 
-impl<T> fmt::Debug for Matrix<T> where T: Num + NumCast + Clone + Copy + fmt::Debug {
+impl<T> Index<usize> for Matrix<T> where T: Numeric {
+	type Output = [T];
+
+	fn index(&self, index: usize) -> &Self::Output { // O(1); O(1)
+		let start = index * self.n;
+		let end = start + self.n;
+		&self.grid[start..end]
+	}
+}
+impl<T> IndexMut<usize> for Matrix<T> where T: Numeric {
+	fn index_mut(&mut self, index: usize) -> &mut Self::Output { // O(1); O(1)
+		let start = index * self.n;
+		let end = start + self.n;
+		&mut self.grid[start..end]
+	}
+}
+
+impl<T> fmt::Debug for Matrix<T> where T: Numeric + fmt::Debug {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		for i in 0..self.m {
 			f.write_str(&format!("{:?}\n", self.get_row(i).unwrap().collect::<Vec<T>>()))?;
@@ -173,14 +214,78 @@ impl<T> fmt::Debug for Matrix<T> where T: Num + NumCast + Clone + Copy + fmt::De
 	}
 }
 
-// impl<T> Add for Matrix<T> where  T: Num + Clone + Copy {
-// 	type Output = Self;
+impl<T> Add for Matrix<T> where  T: Numeric {
+	type Output = Self;
 
-// 	fn add(self, other: Self) -> Self::Output {
-// 		assert_eq!(self.m(), other.m());
-// 		assert_eq!(self.n(), other.n());
-// 		Self {
+	fn add(self, other: Self) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m, other.m);
+		assert_eq!(self.n, other.n);
+		Matrix { 
+			grid: self.grid.into_iter().zip(other.grid.into_iter()).map(|(a, b)| a + b).collect(),
+			m: self.m, n: self.n
+		}
+	}
+}
+impl<T> Sub for Matrix<T> where  T: Numeric {
+	type Output = Self;
 
-// 		}
-// 	}
-// }
+	fn sub(self, other: Self) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m, other.m);
+		assert_eq!(self.n, other.n);
+		Matrix { 
+			grid: self.grid.into_iter().zip(other.grid.into_iter()).map(|(a, b)| a - b).collect(),
+			m: self.m, n: self.n
+		}
+	}
+}
+impl<T> Mul<T> for Matrix<T> where T: Numeric {
+	type Output = Self;
+
+	fn mul(self, scalar: T) -> Self::Output { // O(M*N); O(1)
+		Matrix { 
+			grid: self.grid.into_iter().map(|cell| cell * scalar).collect(),
+			m: self.m, n: self.n
+		}
+	}
+}
+impl<T> Mul for Matrix<T> where  T: Numeric {
+	type Output = Self;
+
+	fn mul(self, other: Self) -> Self::Output { // O((M*N)^1.5); O(M*N)
+		assert_eq!(self.n, other.m);
+
+		fn naive<T: Numeric>(a: Matrix<T>, b: Matrix<T>) -> Matrix<T>
+		where T: Num + NumCast + Clone + Copy {
+			let (m, n) = (a.m, b.n);
+			
+			Matrix::from_fn(m, n, |i, j| {
+				let a = a.get_row(<usize as NumCast>::from(i).unwrap()).unwrap();
+				let b = b.get_row(<usize as NumCast>::from(j).unwrap()).unwrap();
+				let c = a.zip(b);
+				c.fold(T::zero(), |acc, (a, b)| acc + a * b)
+			})
+		}
+
+		naive(self, other)
+	}
+}
+
+
+
+#[macro_export]
+macro_rules! matrix { // O(M*N); O(M*N)
+	( $([ $( $elem:expr ),* ]),* $(,)? ) => {
+		{
+			let mut grid: Vec<Vec<_>> = vec![
+				$( vec![ $( $elem ),* ] ),*
+			];
+			let (m, n) = (grid.len(), grid[0].len());
+			assert!(grid.iter().all(|row| row.len() == n));
+			Matrix::from_vec(grid)
+		}
+	};
+	( $lit:literal; $m:expr; $n:expr ) => {
+		Matrix::fill($lit, $m, $n)
+	}
+}
+pub(crate) use matrix;
