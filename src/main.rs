@@ -1,6 +1,5 @@
-extern crate matrix;
-use crate::matrix::*;
-use crate::matrix::matrix::Matrix;
+use matlib::matrix;
+use matlib::collections::Matrix;
 
 fn main() {
 	println!("Chapitre 1");
@@ -54,6 +53,9 @@ fn main() {
 
 	println!("Chapitre 2");
 	{
-
+		let a: Matrix<i64> = Matrix::from_fn(500, 500, |i, j|
+			i + j
+		);
+		let b = &a * &a;
 	}
 }
