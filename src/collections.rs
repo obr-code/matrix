@@ -121,6 +121,16 @@ impl<T> Matrix<T> where T: Numeric {
 		matrix
 	}
 
+	/// Create a new matrix by transposing another one.
+	pub fn transposed(matrix: &Matrix<T>) -> Self { // O(M*N); O(1)
+		Matrix::from_fn(matrix.n(), matrix.m(), |i, j|
+			*matrix.get(
+				<usize as NumCast>::from(j).unwrap(),
+				<usize as NumCast>::from(i).unwrap(),
+			).unwrap()
+		)
+	}
+
 	// -- Sub -- //
 
 	/// Return the inner matrix laying in `range_i` and `range_j`.
@@ -170,6 +180,12 @@ impl<T> Matrix<T> where T: Numeric {
 		}
 	}
 
+	/// Push a row with a matching length to the end of the matrix.
+	pub fn push_row(&mut self, row: Vec<T>) { // O(N); O(N)
+		assert_eq!(self.n(), row.len());
+		self.0.push(row);
+	}
+
 	// -- Get -- //
 
 	/// Return a value at given coordonates. 
@@ -210,140 +226,148 @@ impl<T> Matrix<T> where T: Numeric {
 		}
 		else { None }
 	}
-	// // Pivot
-	// pub fn pivot(&self, i: usize) -> Option<T> { // O(N); O(1)
-	// 	if let Some(mut row) = self.iter_row(i) {
-	// 		row.find(|x| x.get() != T::zero()).map(|cell| cell.get())
-	// 	}
-	// 	else { None }
-	// }
-	// pub fn column_pivot(&self, i: usize) -> Option<usize> { // O(N); O(1)
-	// 	if let Some(mut row) = self.iter_row(i) {
-	// 		row.position(|x| x.get() != T::zero())
-	// 	}
-	// 	else { None }
-	// }
-	// // Matrix Type
-	// pub fn is_null(&self) -> bool { // O(M*N); O(1)
-	// 	self.0.iter().all(|row| row.iter().all(|val| val.get() == T::zero()))
-	// }
-	// pub fn is_scaled(&self) -> bool { // O(M*N); O(1)
-	// 	(0..self.m()-1).all(|i| {
-	// 		let j1 = self.column_pivot(i);
-	// 		let j2 = self.column_pivot(i+1);
-	// 		(j1 == None && j2 == None)
-	// 		|| self.column_pivot(i) < self.column_pivot(i+1)
-	// 	})
-	// }
-	// pub fn is_reduced(&self) -> bool { // O(M*N); O(1)
-	// 	(0..self.m()-1).all(|i| {
-	// 		let j1 = self.column_pivot(i);
-	// 		let j2 = self.column_pivot(i);
-	// 		{
-	// 			(j1, j2) == (None, None) || j1 < j2
-				
 
-	// 		}
-	// 		((j1 == None && j2 == None)
-	// 		|| (j1 < j2))
-	// 		&& ((j1 == None)
-	// 		|| 
-	// 		)
+	/// Find the value of the pivot for a given row `i`.
+	pub fn pivot(&self, i: usize) -> Option<&T> { // O(N); O(1)
+		if let Some(mut row) = self.iter_row(i) {
+			row.find(|x| **x != T::zero())
+		}
+		else { None }
+	}
 
-	// 		j < self.column_pivot(j+1)
-	// 		&& self.pivot == Some(T::one())
-	// 		&& self.pivot(i-1) == Some(T::one())
-	// 		self.column_pivot(i) < self.column_pivot(i+1)
-	// 		&& self.pivot(i)   == Some(T::one())
-	// 		&& self.pivot(i-1) == Some(T::one())
-	// 		&& self.iter_col().unwrap()
-	// 			.enumerate()
-	// 			.take_while(|(idx, _)| *idx < i)
-	// 			.all(|(_, cell)| cell.get() == T::zero())
-	// 	})
-	// }
-	// pub fn is_upper_triangular(&self) -> bool { // O(M*N); O(1)
-	// 	self.is_square()
-	// 	&& (1..self.m).all(|i|
-	// 		(0..i).all(|j| 
-	// 			self.get(i, j) == Some(T::zero())
-	// 		)
-	// 	)
-	// }
-	// pub fn is_lower_triangular(&self) -> bool { // O(M*N); O(1)
-	// 	self.is_square()
-	// 	&& (0..self.m).all(|i|
-	// 		(i+1..self.n).all(|j|
-	// 			self.get(i, j) == Some(T::zero())
-	// 		)
-	// 	)
-	// }
-	// pub fn is_diagonal(&self) -> bool { // O(M*N); O(1)
-	// 	self.is_upper_triangular() && self.is_lower_triangular()
-	// }
-	// pub fn is_scalar(&self) -> bool { // O(M*N); O(1)
-	// 	if self.is_diagonal() {
-	// 		self.diagonal().unwrap().all(|cell| cell == self.get(0, 0).unwrap())
-	// 	}
-	// 	else { false }
-	// }
-	// pub fn is_identity(&self) -> bool { // O(M*N); O(1)
-	// 	self.is_scalar() && self.get(0, 0).unwrap_or(T::one()) == T::one()
-	// }
-	// pub fn is_symetric(&self) -> bool { // O(M*N); O(1)
-	// 	self.is_square()
-	// 	&& (0..self.m).all(|i|
-	// 		(i+1..self.n).all(|j|
-	// 			self.get(i, j) == self.get(j, i)
-	// 		)
-	// 	)
-	// }
-	// pub fn is_antisymetric(&self) -> bool { // O(M*N); O(1)
-	// 	self.is_square()
-	// 	&& (0..self.m).all(|i|
-	// 		(i..self.n).all(|j|
-	// 			self.get(i, j).unwrap() + self.get(j, i).unwrap() == T::zero()
-	// 		)
-	// 	)
-	// }
-	// // Matrix Formats
-	// pub fn is_line(&self) -> bool { // O(1); O(1)
-	// 	self.m == 1
-	// }
-	// pub fn is_column(&self) -> bool { // O(1); O(1)
-	// 	self.n == 1
-	// }
-	// pub fn is_square(&self) -> bool { // O(1); O(1)
-	// 	self.m == self.n
-	// }
-	// pub fn add_row(&mut self, mut row: Vec<T>) { // O(N); O(N)
-	// 	assert_eq!(self.n, row.len());
-	// 	self.grid.append(&mut row);
-	// 	self.m += 1;
-	// }
-	// // Diagonal
-	// pub fn diagonal(&self) -> Option<Map<Range<usize>, impl FnMut(usize) -> T>> { // O(M); O(1)
-	// 	if self.is_square() {
-	// 		Some((0..self.m).map(|i| self.get(i, i).unwrap()))
-	// 	}
-	// 	else { None }
-	// }
-	// pub fn trace(&self) -> Option<T> { // O(M); O(1)
-	// 	if let Some(diagonal) = self.diagonal() {
-	// 		Some(diagonal.fold(T::zero(), |acc, cell| acc + cell))
-	// 	} else {
-	// 		None
-	// 	}
-	// }
-	// // Transposition
-	// pub fn transposed(&self) -> Self { // O(M*N); O(1)
-	// 	Matrix::from_fn(self.n, self.m, |i, j|
-	// 		self.get(
-	// 			<usize as NumCast>::from(j).unwrap(),
-	// 			<usize as NumCast>::from(i).unwrap(),
-	// 		).unwrap()
-	// 	)
-	// }
+	/// Find the column of the pivot for a given row `i`.
+	pub fn column_pivot(&self, i: usize) -> Option<usize> { // O(N); O(1)
+		if let Some(mut row) = self.iter_row(i) {
+			row.position(|x| *x != T::zero())
+		}
+		else { None }
+	}
+
+	/// Return the diagonal of the matrix.
+	pub fn diagonal(&self) -> Option<impl Iterator<Item = &T>> { // O(M); O(1)
+		if self.is_square() {
+			Some((0..self.m()).map(|i| self.get(i, i).unwrap()))
+		}
+		else { None }
+	}
+
+	/// Return the trace of the matrix.
+	pub fn trace(&self) -> Option<T> { // O(M); O(1)
+		if let Some(diagonal) = self.diagonal() {
+			Some(diagonal.fold(T::zero(), |acc, cell| acc + *cell))
+		} else {
+			None
+		}
+	}
+
+	// -- Check -- //
+
+	/// Check if the matrix is null.
+	pub fn is_null(&self) -> bool { // O(M*N); O(1)
+		self.0.iter().all(|row|
+			row.iter().all(|val|
+				*val == T::zero()
+			)
+		)
+	}
+
+	/// Check if the matrix is scaled.
+	pub fn is_scaled(&self) -> bool { // O(M*N); O(1)
+		(0..self.m()-1).all(|i| {
+			let j1 = self.column_pivot(i);
+			let j2 = self.column_pivot(i+1);
+			(j1 == None && j2 == None)
+			|| self.column_pivot(i) < self.column_pivot(i+1)
+		})
+	}
+
+	/// Check if the matrix is reduced.
+	pub fn is_reduced(&self) -> bool { // O(M*N); O(1)
+		let mut cols = (0..self.m()-1).filter_map(|i| 
+			self.column_pivot(i)
+		);
+		cols.clone().is_sorted_by(|a, b| a < b)
+		&& cols.all(|j|
+			self.iter_col(j).unwrap().filter(|cell|
+				**cell != T::zero()
+			).count() == 1
+		)
+	}
+
+	/// Check if the matrix is upper-triangular.
+	pub fn is_upper_triangular(&self) -> bool { // O(M*N); O(1)
+		self.is_square()
+		&& (1..self.m()).all(|i|
+			(0..i).all(|j| 
+				self.get(i, j) == Some(&T::zero())
+			)
+		)
+	}
+
+	/// Check if the matrix is lower-triangular.
+	pub fn is_lower_triangular(&self) -> bool { // O(M*N); O(1)
+		self.is_square()
+		&& (0..self.m()).all(|i|
+			(i+1..self.n()).all(|j|
+				self.get(i, j) == Some(&T::zero())
+			)
+		)
+	}
+
+	/// Check if the matrix is diagonal.
+	pub fn is_diagonal(&self) -> bool { // O(M*N); O(1)
+		self.is_upper_triangular() && self.is_lower_triangular()
+	}
+
+	/// Check if the matrix is scalar.
+	pub fn is_scalar(&self) -> bool { // O(M*N); O(1)
+		self.is_diagonal()
+		&& self.diagonal().unwrap().all(|cell|
+			cell == self.get(0, 0).unwrap()
+		)
+	}
+
+	/// Check if the matrix is identity.
+	pub fn is_identity(&self) -> bool { // O(M*N); O(1)
+		self.is_scalar() && self.get(0, 0) == Some(&T::one())
+	}
+
+	/// Check if the matrix is symetric.
+	pub fn is_symetric(&self) -> bool { // O(M*N); O(1)
+		self.is_square()
+		&& (0..self.m()).all(|i|
+			(i+1..self.n()).all(|j|
+				self.get(i, j) == self.get(j, i)
+			)
+		)
+	}
+
+	/// Check if the matrix antisymetric.
+	pub fn is_antisymetric(&self) -> bool { // O(M*N); O(1)
+		self.is_square()
+		&& (0..self.m()).all(|i|
+			(i..self.n()).all(|j|
+				*self.get(i, j).unwrap() + *self.get(j, i).unwrap() == T::zero()
+			)
+		)
+	}
+
+	// -- Matrix Formats -- //
+
+	/// Check if matrix is line.
+	pub fn is_line(&self) -> bool { // O(1); O(1)
+		self.m() == 1
+	}
+
+	/// Check if matrix is column.
+	pub fn is_column(&self) -> bool { // O(1); O(1)
+		self.n() == 1
+	}
+
+	/// Check if matrix is square.
+	pub fn is_square(&self) -> bool { // O(1); O(1)
+		self.m() == self.n()
+	}
 }
 
 impl<T> Index<usize> for Matrix<T> where T: Numeric {
@@ -423,6 +447,12 @@ impl<T> Mul<T> for Matrix<T> where T: Numeric {
 		)
 	}
 }
+impl<T> Mul for Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn mul(self, other: Self) -> Self::Output { // O(7^log M); O(M^2)
+		&self * &other
+	}
+}
 impl<T> Mul for &Matrix<T> where  T: Numeric {
 	type Output = Matrix<T>;
 	fn mul(self, other: Self) -> Self::Output { // O(7^log M); O(M^2)
@@ -436,18 +466,17 @@ impl<T> Mul for &Matrix<T> where  T: Numeric {
 		}
 
 		fn strassen<T: Numeric>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
-
 			fn process<T: Numeric>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
 				let (a11, a12, a21, a22) = a.dials();
 				let (b11, b12, b21, b22) = b.dials();
 
-				let m1 = &(&a11 + &a22) * &(&b11 + &b22);
+				let m1 = (&a11 + &a22) * (&b11 + &b22);
 				let m2 = &(&a21 + &a22) * &b11;
 				let m3 = &a11 * &(&b12 - &b22);
 				let m4 = &a22 * &(&b21 - &b11);
 				let m5 = &(&a11 + &a12) * &b22;
-				let m6 = &(&a21 - &a11) * &(&b11 + &b12);
-				let m7 = &(&a12 - &a22) * &(&b21 + &b22);
+				let m6 = (&a21 - &a11) * (&b11 + &b12);
+				let m7 = (&a12 - &a22) * (&b21 + &b22);
 
 				let c11 = &(&m1 + &m4) - &(&m5 - &m7);
 				let c12 = &m3 + &m5;
