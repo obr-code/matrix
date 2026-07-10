@@ -1,28 +1,65 @@
-use num_traits::{Num, NumCast};
+use num_traits::{Num, NumAssign, NumCast };
+use std::cmp::Ord;
+use std::sync::LazyLock;
+use proc_macros::compute;
 use std::fmt;
-use std::cell::{RefCell, Cell};
 use std::iter::{Map, RepeatN, repeat_n};
 use std::ops::{ Add, Div, Index, IndexMut, Mul, Range, RangeFrom, RangeTo, Sub };
 
-pub trait Numeric: Clone + Copy + Num + NumCast + Sized {}
+pub trait Numeric: Clone + Copy + Num + NumCast + Sized + NumAssign + PartialEq + Eq + Ord {}
 impl Numeric for i32 {}
 impl Numeric for i64 {}
 impl Numeric for u32 {}
 impl Numeric for u64 {}
 impl Numeric for usize {}
 impl Numeric for isize {}
-impl Numeric for f32 {}
-impl Numeric for f64 {}
+
+// -- Utils -- //
+
+/// Compute the lowest common multiple between a and b.
+pub fn lcm<T: Numeric>(mut a: T, mut b: T) -> T {
+	while a != b {
+		if a > b {
+			a = a - b;
+		} else {
+			b = b - a;
+		}
+	}
+	a
+}
+
+/// Compute the lowest common denominator between a and b.
+pub fn lcd<T: Numeric>(mut a: T, mut b: T) -> T {
+	if a < T::zero() { a = T::zero() - a; }
+	if b < T::zero() { b = T::zero() - b; }
+	(a * b) / lcm(a, b)
+}
 
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Matrix<T: Numeric> (Vec<Vec<T>>);
+
+pub static BROY: LazyLock<Matrix<i64>> = LazyLock::new(|| {
+	use crate::matrix;
+	let matrix = matrix![
+		[ 3, 1, 1,-1, 2, 0, 0,-2],
+		[ 1, 3,-1, 1, 0, 2,-2, 0],
+		[ 1,-1, 3, 1, 0,-2, 2, 0],
+		[-1, 1, 1, 3,-2, 0, 0, 2],
+		[ 2, 0, 0,-2, 3, 1, 1,-1],
+		[ 0, 2,-2, 0, 1, 3,-1, 1],
+		[ 0,-2, 2, 0, 1,-1, 3, 1],
+		[-2, 0, 0, 2,-1, 1, 1, 3],
+	];
+	Matrix::broy(&matrix).unwrap()
+});
 
 impl<T> Matrix<T> where T: Numeric {
 	// -- SUMMARY -- //
 
 
 	// -- Utils -- //
+
 
 	/// Return the number of row in the matrix.
 	pub fn m(&self) -> usize {
@@ -84,7 +121,7 @@ impl<T> Matrix<T> where T: Numeric {
 	}
 
 	/// Initialize a new matrix from a grid of vectors.
-	pub fn from_vec(vec: Vec<Vec<T>>) -> Self { // O(M*N); O(1)
+	pub fn from(vec: Vec<Vec<T>>) -> Self { // O(M*N); O(1)
 		Matrix(
 			vec.into_iter().map(|row|
 				row.into_iter().map(|val|
@@ -94,8 +131,20 @@ impl<T> Matrix<T> where T: Numeric {
 		)
 	}
 
+	/// Initialize a column matrix from a vector.
+	pub fn column(vec: Vec<T>) -> Self {
+		Matrix::from_fn(vec.len(), 1, |i, _|
+			vec[<usize as NumCast>::from(i).unwrap()]
+		)
+	}
+
+	/// Initialize a identity matrix.
+	pub fn identity(m: usize, n: usize) -> Self { // O(M*N); O(1)
+		Matrix::scalar(m, n, T::one())
+	}
+
 	/// Initialize a new matrix from a given scalar.
-	pub fn from_scalar(m: usize, n: usize, scalar: T) -> Self { // O(M*N); O(1)	
+	pub fn scalar(m: usize, n: usize, scalar: T) -> Self { // O(M*N); O(1)	
 		Matrix(
 			(0..m).map(|i|
 				(0..n).map(|j|
@@ -121,12 +170,105 @@ impl<T> Matrix<T> where T: Numeric {
 		matrix
 	}
 
-	/// Create a new matrix by transposing another one.
+	/// Initialize a new matrix by transposing another one.
 	pub fn transposed(matrix: &Matrix<T>) -> Self { // O(M*N); O(1)
 		Matrix::from_fn(matrix.n(), matrix.m(), |i, j|
 			*matrix.get(
 				<usize as NumCast>::from(j).unwrap(),
 				<usize as NumCast>::from(i).unwrap(),
+			).unwrap()
+		)
+	}
+
+	/// Solve a SLE with unknown constants but known coefficients by using Broy's method (me).
+	/// 
+	/// This enables O(M^2) time complexity for solving multiple SLE with matching coefficients.
+	/// 
+	/// Return Some(matrix) where the sum of row `i` 0..n-1 multiplicated by constant[i]
+	/// is equal to the value of variable `i` multiplicated by matrix[i][n-1] row.
+	/// 
+	/// Return None if solution is not unique.
+	pub fn broy(matrix: &Matrix<T>) -> Option<Self> { // O(M^3); O(M^2)
+		let (m, n) = matrix.dimensions();
+		let mut matrix = matrix.clone();
+		let mut consts = Matrix::identity(m, n);
+
+		for j1 in 0..n {
+			let i1 = (0..m).find(|i1|
+				matrix.column_pivot(*i1) == Some(j1)
+			).unwrap();
+
+			for i2 in 0..m {
+				let lcd = lcd(matrix[i1][j1], matrix[i2][j1]);
+				let k1 = lcd / matrix[i1][j1];
+				let k2 = lcd / matrix[i2][j1];
+
+				for j2 in 0..n {
+					println!("{:?}", &matrix);
+					matrix[i2][j2] *= k2;
+					consts[i2][j2] *= k2;
+					matrix[i2][j2] = matrix[i2][j2] - matrix[i1][j2] * k1;
+					consts[i2][j2] = consts[i2][j2] - consts[i1][j2] * k1;
+				}
+			}
+		}
+
+		consts.push_col(matrix.diagonal().unwrap().map(|x| *x).collect());
+
+		Some(consts)
+	}
+
+	/// Solve a SLE computed in a augmented matrix with Gauss' method. 
+	/// 
+	/// Return the corresponding variables.
+	pub fn solved(augmented: &Matrix<T>) -> Self { // O(MN * (M+N))
+		let mut matrix = augmented.clone();
+		let (m, n) = matrix.dimensions();
+
+		(0..m).for_each(|i|
+			(0..i.min(n)).for_each(|j| {
+				let (a, b) = (*matrix.get(j, j).unwrap(), *matrix.get(i, j).unwrap());
+				(j..matrix.n()).for_each(|k| {
+					matrix[i][k] *= a;
+					let product = matrix[j][k] * b;
+					matrix[i][k] -= product;
+				});
+			})
+		);
+		
+		(0..m).rev().for_each(|i| {
+			(i+1..n-1).for_each(|j| {
+				let product = matrix[i][j] * matrix[j][n-1];
+				matrix[i][n-1] -= product;
+			});
+			let coefficient = matrix[i][i];
+			if coefficient != T::zero() {
+				// To prevent if matrix has multiple solutions.
+				matrix[i][n-1] /= coefficient;
+			}
+			matrix[i][i] = T::one();
+		});
+		
+		Matrix::column(matrix.iter_col(matrix.n()-1).unwrap().map(|x| *x).collect())
+	}
+
+	/// Initialize a new matrix by inversing the order of each element in rows.
+	/// 
+	/// # Examples
+	/// 
+	/// ```
+	/// use matlib::matrix;
+	/// use matlib::collections::Matrix;
+	/// let a = matrix![[1, 2], [3, 4]];
+	/// let b = matrix![[2, 1], [4, 3]];
+	/// let c = Matrix::row_reflected(&b);
+	/// assert_eq!(a, c);
+	/// ```
+	pub fn row_reflected(matrix: &Matrix<T>) -> Self {
+		Matrix::from_fn(matrix.m(), matrix.n(), |i, j|
+			*matrix.get(
+				<usize as NumCast>::from(i).unwrap(),
+				matrix.n()-1 - <usize as NumCast>::from(j).unwrap(),
 			).unwrap()
 		)
 	}
@@ -143,7 +285,7 @@ impl<T> Matrix<T> where T: Numeric {
 	}
 
 	/// Return the four dials of the given matrix.
-	pub fn dials(&self) -> (Matrix<T>, Matrix<T>, Matrix<T>, Matrix<T>) {
+	pub fn dials(&self) -> [Matrix<T>; 4] {
 		assert!(self.m() & 1 == 0);
 		assert!(self.n() & 1 == 0);
 
@@ -152,7 +294,7 @@ impl<T> Matrix<T> where T: Numeric {
 		let m21 = self.sub_matrix(self.m()>>1..self.m(), 0..self.n()>>1);
 		let m22 = self.sub_matrix(self.m()>>1..self.m(), self.n()>>1..self.n());
 
-		(m11, m12, m21, m22)
+		[m11, m12, m21, m22]
 	}
 
 	// -- Mutation -- //
@@ -184,6 +326,14 @@ impl<T> Matrix<T> where T: Numeric {
 	pub fn push_row(&mut self, row: Vec<T>) { // O(N); O(N)
 		assert_eq!(self.n(), row.len());
 		self.0.push(row);
+	}
+
+	/// Push a column with a matching length to the end of the matrix.
+	pub fn push_col(&mut self, col: Vec<T>) { // O(N); O(N)
+		assert_eq!(self.m(), col.len());
+		(0..self.m()).for_each(|i|
+			self.0[i].push(col[i])
+		);
 	}
 
 	// -- Get -- //
@@ -225,6 +375,21 @@ impl<T> Matrix<T> where T: Numeric {
 			)
 		}
 		else { None }
+	}
+
+	/// Return the determinant of the matrice.
+	pub fn determinant(&self) -> Option<T> {
+		todo!()
+	}
+
+	/// Return the cofactor of the given coordonates.
+	pub fn cofactor(&self) -> Option<T> {
+		todo!()
+	}
+
+	/// Return the minor of the given coordonates.
+	pub fn minor(&self, i: usize, j: usize) -> Option<T> {
+		todo!()
 	}
 
 	/// Find the value of the pivot for a given row `i`.
@@ -342,7 +507,7 @@ impl<T> Matrix<T> where T: Numeric {
 		)
 	}
 
-	/// Check if the matrix antisymetric.
+	/// Check if the matrix is antisymetric.
 	pub fn is_antisymetric(&self) -> bool { // O(M*N); O(1)
 		self.is_square()
 		&& (0..self.m()).all(|i|
@@ -350,6 +515,29 @@ impl<T> Matrix<T> where T: Numeric {
 				*self.get(i, j).unwrap() + *self.get(j, i).unwrap() == T::zero()
 			)
 		)
+	}
+
+	/// Check if the matrix is a transition matrix.
+	pub fn is_transition(&self) -> bool { // O(M*N); O(1)
+		self.is_square()
+		&& (0..self.n()).all(|j|
+			(0..self.m()).fold(T::zero(), |acc, i|
+				acc + *self.get(i, j).unwrap()
+			) == T::one()
+		)
+	}
+
+	/// Check if the matrix is a level state matrix.
+	pub fn is_level_state(&self) -> bool { // O(M); O(1)
+		self.is_column()
+		&& (0..self.m()).fold(T::zero(), |acc, i|
+			acc + *self.get(i, 0).unwrap()
+		) == T::one()
+	}
+
+	/// Check if the matrix is regular.
+	pub fn is_regular(&self) -> bool {
+		self.determinant() != Some(T::zero())
 	}
 
 	// -- Matrix Formats -- //
@@ -370,18 +558,26 @@ impl<T> Matrix<T> where T: Numeric {
 	}
 }
 
+// -- Indexing -- //
+
+/// Implement basic indexing for matrix.
 impl<T> Index<usize> for Matrix<T> where T: Numeric {
 	type Output = [T];
 	fn index(&self, index: usize) -> &Self::Output { // O(1); O(1)
 		&self.0[index]
 	}
 }
+
+/// Implement mutable indexing for matrix.
 impl<T> IndexMut<usize> for Matrix<T> where T: Numeric {
 	fn index_mut(&mut self, index: usize) -> &mut Self::Output { // O(1); O(1)
 		&mut self.0[index]
 	}
 }
 
+// -- Operations -- //
+
+/// Implement the addition opperation between matrix.
 impl<T> Add for &Matrix<T> where  T: Numeric {
 	type Output = Matrix<T>;
 	fn add(self, other: Self) -> Self::Output { // O(M*N); O(M*N)
@@ -398,6 +594,47 @@ impl<T> Add for &Matrix<T> where  T: Numeric {
 		)
 	}
 }
+impl<T> Add<Matrix<T>> for &Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn add(self, mut other: Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m(), other.m());
+		assert_eq!(self.n(), other.n());
+		(0..self.m()).for_each(|i|
+			(0..self.n()).for_each(|j|
+				other[i][j] += self[i][j]
+			)
+		);
+		other
+	}
+}
+impl<T> Add<&Matrix<T>> for Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn add(mut self, other: &Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m(), other.m());
+		assert_eq!(self.n(), other.n());
+		(0..self.m()).for_each(|i|
+			(0..self.n()).for_each(|j|
+				self[i][j] += other[i][j]
+			)
+		);
+		self
+	}
+}
+impl<T> Add for Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn add(mut self, other: Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m(), other.m());
+		assert_eq!(self.n(), other.n());
+		(0..self.m()).for_each(|i|
+			(0..self.n()).for_each(|j|
+				self[i][j] += other[i][j]
+			)
+		);
+		self
+	}
+}
+
+/// Implement the substraction opperation between matrix.
 impl<T> Sub for &Matrix<T> where  T: Numeric {
 	type Output = Matrix<T>;
 	fn sub(self, other: Self) -> Self::Output { // O(M*N); O(M*N)
@@ -407,6 +644,59 @@ impl<T> Sub for &Matrix<T> where  T: Numeric {
 			self.0.iter().zip(other.0.iter()).map(|(a, b)| 
 				a.into_iter().zip(b.into_iter()).map(|(a, b)|
 					*a - *b
+				).collect()
+			).collect()
+		)
+	}
+}
+impl<T> Sub<&Matrix<T>> for Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn sub(mut self, other: &Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m(), other.m());
+		assert_eq!(self.n(), other.n());
+		(0..self.m()).for_each(|i|
+			(0..self.n()).for_each(|j|
+				self[i][j] -= other[i][j]
+			)
+		);
+		self
+	}
+}
+impl<T> Sub<Matrix<T>> for &Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn sub(self, mut other: Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m(), other.m());
+		assert_eq!(self.n(), other.n());
+		(0..self.m()).for_each(|i|
+			(0..self.n()).for_each(|j|
+				other[i][j] -= self[i][j]
+			)
+		);
+		other
+	}
+}
+impl<T> Sub for Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn sub(mut self, other: Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		assert_eq!(self.m(), other.m());
+		assert_eq!(self.n(), other.n());
+		(0..self.m()).for_each(|i|
+			(0..self.n()).for_each(|j|
+				self[i][j] -= other[i][j]
+			)
+		);
+		self
+	}
+}
+
+/// Implement the multiplication opperation between a scalar and a matrix.
+impl<T> Mul<T> for Matrix<T> where T: Numeric {
+	type Output = Self;
+	fn mul(self, scalar: T) -> Self::Output { // O(M*N); O(1)
+		Matrix(
+			self.0.into_iter().map(|row|
+				row.into_iter().map(|cell|
+					cell * scalar
 				).collect()
 			).collect()
 		)
@@ -435,27 +725,23 @@ impl<T> Sub for &Matrix<T> where  T: Numeric {
 /// let d = &a * &b;
 /// assert_eq!(c, d);
 /// ```
-impl<T> Mul<T> for Matrix<T> where T: Numeric {
-	type Output = Self;
-	fn mul(self, scalar: T) -> Self::Output { // O(M*N); O(1)
-		Matrix(
-			self.0.into_iter().map(|row|
-				row.into_iter().map(|cell|
-					cell * scalar
-				).collect()
-			).collect()
-		)
-	}
-}
-impl<T> Mul for Matrix<T> where T: Numeric {
-	type Output = Matrix<T>;
-	fn mul(self, other: Self) -> Self::Output { // O(7^log M); O(M^2)
-		&self * &other
-	}
-}
 impl<T> Mul for &Matrix<T> where  T: Numeric {
 	type Output = Matrix<T>;
+
 	fn mul(self, other: Self) -> Self::Output { // O(7^log M); O(M^2)
+		
+		fn broy<T: Numeric>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
+			let [a11, a12, a21, a22] = a.dials();
+			let [b11, b12, b21, b22] = b.dials();
+
+			let m1 = compute!((a11 + a12 + a21 + a22) * (b11 + b12 + b21 + b22));
+			let m2 = compute!((a11 + a12) * (b11 + b12 + b21 + b22));
+			let m3 = compute!((a11 + a12 + a21 + a22) * (b11 + b21));
+			let m4 = compute!((a11 + a21) * (b11 + b12));
+			let m5 = compute!((a12 + a22) * (b21 + b22));
+
+			todo!()
+		}
 
 		fn naive<T: Numeric>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
 			Matrix::from_fn(a.m(), b.n(), |i, j|
@@ -467,8 +753,8 @@ impl<T> Mul for &Matrix<T> where  T: Numeric {
 
 		fn strassen<T: Numeric>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
 			fn process<T: Numeric>(a: &Matrix<T>, b: &Matrix<T>) -> Matrix<T> {
-				let (a11, a12, a21, a22) = a.dials();
-				let (b11, b12, b21, b22) = b.dials();
+				let [a11, a12, a21, a22] = a.dials();
+				let [b11, b12, b21, b22] = b.dials();
 
 				let m1 = (&a11 + &a22) * (&b11 + &b22);
 				let m2 = &(&a21 + &a22) * &b11;
@@ -505,6 +791,25 @@ impl<T> Mul for &Matrix<T> where  T: Numeric {
 			strassen(self, other)
 		}
 	}
+
+}
+impl<T> Mul<&Matrix<T>> for Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn mul(self, other: &Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		&self * other
+	}
+}
+impl<T> Mul<Matrix<T>> for &Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn mul(self, other: Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		self * &other
+	}
+}
+impl<T> Mul for Matrix<T> where T: Numeric {
+	type Output = Matrix<T>;
+	fn mul(self, other: Matrix<T>) -> Self::Output { // O(M*N); O(1)
+		&self * &other
+	}
 }
 
 #[macro_export]
@@ -516,7 +821,7 @@ macro_rules! matrix { // O(M*N); O(M*N)
 			];
 			let (m, n) = (grid.len(), grid[0].len());
 			assert!(grid.iter().all(|row| row.len() == n));
-			Matrix::from_vec(grid)
+			Matrix::from(grid)
 		}
 	};
 	( $lit:literal; $m:expr; $n:expr ) => {
