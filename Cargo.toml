@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 proc_macros = { path = "macros" }
 num-traits = "0.2"
+crossterm = "0.29.0"
 
 [profile.release]
 opt-level = 3          # Maximum runtime optimization
