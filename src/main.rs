@@ -1,5 +1,6 @@
 use matlib::matrix;
 use matlib::collections::Matrix;
+use macros::{ matrix, mathfn };
 
 fn main() {
 	println!("Chapitre 1");
@@ -53,7 +54,7 @@ fn main() {
 
 	println!("Chapitre 2");
 	{
-		
+		mathfn!(a + b * c);
 	}
 
 	println!("Chapitre 3");

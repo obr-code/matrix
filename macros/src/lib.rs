@@ -1,7 +1,10 @@
-use std::collections::HashMap;
+use mathfn::MathFn;
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::{BinOp, ExprBinary, Ident};
 use syn::{Attribute, Expr, ExprAssign, parse_macro_input, parse_quote};
+use std::collections::HashSet;
+use utils::hashset;
 
 #[proc_macro]
 pub fn compute(input: TokenStream) -> TokenStream {

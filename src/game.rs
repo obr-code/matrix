@@ -92,7 +92,7 @@ impl Graphic2D {
 					0 => ' ',
 					_ => 'o',
 				};
-				// Only print if different from previous frame
+				// Only print if different from previous frame.
 				if self.prev_grid[y][x] != cell {
 					stdout.execute(MoveTo(x as u16, y as u16)).unwrap();
 					stdout.execute(Print(current_char)).unwrap();

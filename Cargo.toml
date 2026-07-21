@@ -4,9 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-proc_macros = { path = "macros" }
-num-traits = "0.2"
+macros = { path = "macros" }
+mathfn = { path = "mathfn" }
+matrix = { path = "matrix" }
+utils = { path = "utils" }
+
 crossterm = "0.29.0"
+syn = { version = "2", features = ["full"] }
 
 [profile.release]
 opt-level = 3          # Maximum runtime optimization

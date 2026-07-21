@@ -1,0 +1,65 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   0.302559600s  INFO prepare_target{force=false package_id=proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros) target="proc_macros"}: cargo::core::compiler::fingerprint: stale: changed "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs"
+   0.302645400s  INFO prepare_target{force=false package_id=proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros) target="proc_macros"}: cargo::core::compiler::fingerprint:           (vs) "C:\\sandbox\\matrix\\matlib\\mathfn\\proc_macros\\target\\debug\\.fingerprint\\mathfn-1828c3ebea0bb932\\dep-lib-mathfn"
+   0.302668100s  INFO prepare_target{force=false package_id=proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros) target="proc_macros"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 13429059528, nanos: 170004800 } < FileTime { seconds: 13429133176, nanos: 496533700 }
+   0.310554100s  INFO prepare_target{force=false package_id=proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros) target="proc_macros"}: cargo::core::compiler::fingerprint: fingerprint error for proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros)/Check { test: false }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("proc_macros", ["proc-macro"], "C:\\sandbox\\matrix\\matlib\\mathfn\\proc_macros\\src\\lib.rs", Edition2024) }
+   0.310652700s  INFO prepare_target{force=false package_id=proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros) target="proc_macros"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\sandbox\matrix\matlib\mathfn\proc_macros\target\debug\.fingerprint\proc_macros-08b25af035cac13d\lib-proc_macros`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   0.356885300s  INFO prepare_target{force=false package_id=mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn) target="mathfn"}: cargo::core::compiler::fingerprint: fingerprint dirty for mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("mathfn", ["lib"], "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs", Edition2024) }
+   0.356947300s  INFO prepare_target{force=false package_id=mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn) target="mathfn"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "C:\\sandbox\\matrix\\matlib\\mathfn\\proc_macros\\target\\debug\\.fingerprint\\mathfn-1828c3ebea0bb932\\dep-lib-mathfn", reference_mtime: FileTime { seconds: 13429059528, nanos: 170004800 }, stale: "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs", stale_mtime: FileTime { seconds: 13429133176, nanos: 496533700 } }))
+   0.553501500s  INFO prepare_target{force=false package_id=proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros) target="proc_macros"}: cargo::core::compiler::fingerprint: fingerprint error for proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros)/Check { test: true }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("proc_macros", ["proc-macro"], "C:\\sandbox\\matrix\\matlib\\mathfn\\proc_macros\\src\\lib.rs", Edition2024) }
+   0.553564700s  INFO prepare_target{force=false package_id=proc_macros v0.1.0 (C:\sandbox\matrix\matlib\mathfn\proc_macros) target="proc_macros"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\sandbox\matrix\matlib\mathfn\proc_macros\target\debug\.fingerprint\proc_macros-67a51a980bf60160\test-lib-proc_macros`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+    Checking mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn)
+error: could not compile `mathfn` (lib) due to 19 previous errors; 2 warnings emitted
