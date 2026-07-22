@@ -1,35 +1,10 @@
 use num_traits::{ Num, NumAssign, NumAssignRef, NumCast, NumOps, NumRef, RefNum };
+use std::fmt::Debug;
 use std::iter::{ Product, Sum };
 use std::ops::Neg;
 
-pub trait Numeric: 
-	Clone +
-	Copy +
-	Neg<Output = Self> +
-	Num +
-	NumCast +
-	NumRef +
-	NumAssign +
-	NumAssignRef +
-	NumOps +
-	PartialEq +
-	PartialOrd +
-	Product +
-	RefNum<Self> +
-	Sized +
-	Sum +
-	ToOwned
-{}
-impl Numeric for i8 {}
-impl Numeric for i16 {}
-impl Numeric for i32 {}
-impl Numeric for i64 {}
-impl Numeric for isize {}
-impl Numeric for f32 {}
-impl Numeric for f64 {}
-
 /// Compute the lowest common multiple between a and b.
-pub fn lcm<T: Numeric>(mut a: T, mut b: T) -> Option<T> {
+pub fn lcm<T: Copy + Num + PartialOrd>(mut a: T, mut b: T) -> Option<T> {
 	if a == T::zero() || b == T::zero() { return None; }
 	while a > b {
 		if a > b {
@@ -42,7 +17,7 @@ pub fn lcm<T: Numeric>(mut a: T, mut b: T) -> Option<T> {
 }
 
 /// Compute the lowest common denominator between a and b.
-pub fn lcd<T: Numeric>(mut a: T, mut b: T) -> Option<T> {
+pub fn lcd<T: Copy + Num + PartialOrd>(mut a: T, mut b: T) -> Option<T> {
 	if a == T::zero() || b == T::zero() { return None; }
 	if a < T::zero() { a = T::zero() - a; }
 	if b < T::zero() { b = T::zero() - b; }

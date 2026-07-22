@@ -1,12 +1,66 @@
-   0.135632000s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint: stale: changed "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs"
-   0.135682300s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:           (vs) "C:\\sandbox\\matrix\\matlib\\macros\\target\\debug\\.fingerprint\\mathfn-519a4a6eef96dca5\\dep-lib-mathfn"
-   0.135697500s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 13429220931, nanos: 589691400 } < FileTime { seconds: 13429220934, nanos: 136712800 }
-   0.138521100s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint: fingerprint dirty for macros v0.1.0 (C:\sandbox\matrix\matlib\macros)/Check { test: false }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("macros", ["proc-macro"], "C:\\sandbox\\matrix\\matlib\\macros\\src\\lib.rs", Edition2024) }
-   0.138577500s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "mathfn" })
-   0.171164300s  INFO prepare_target{force=false package_id=mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn) target="mathfn"}: cargo::core::compiler::fingerprint: fingerprint dirty for mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("mathfn", ["lib"], "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs", Edition2024) }
-   0.171227600s  INFO prepare_target{force=false package_id=mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn) target="mathfn"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "C:\\sandbox\\matrix\\matlib\\macros\\target\\debug\\.fingerprint\\mathfn-519a4a6eef96dca5\\dep-lib-mathfn", reference_mtime: FileTime { seconds: 13429220931, nanos: 589691400 }, stale: "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs", stale_mtime: FileTime { seconds: 13429220934, nanos: 136712800 } }))
-   0.181495600s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint: fingerprint dirty for macros v0.1.0 (C:\sandbox\matrix\matlib\macros)/Check { test: true }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("macros", ["proc-macro"], "C:\\sandbox\\matrix\\matlib\\macros\\src\\lib.rs", Edition2024) }
-   0.181551900s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "mathfn" })
+   0.213187700s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint: stale: changed "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs"
+   0.213311400s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:           (vs) "C:\\sandbox\\matrix\\matlib\\macros\\target\\debug\\.fingerprint\\mathfn-b1e5327e40827418\\dep-lib-mathfn"
+   0.213372300s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 13429233431, nanos: 206753800 } < FileTime { seconds: 13429233434, nanos: 338979700 }
+   0.217844900s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint: fingerprint error for macros v0.1.0 (C:\sandbox\matrix\matlib\macros)/Check { test: false }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("macros", ["proc-macro"], "C:\\sandbox\\matrix\\matlib\\macros\\src\\lib.rs", Edition2024) }
+   0.217953500s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\sandbox\matrix\matlib\macros\target\debug\.fingerprint\macros-0d5a207c3bbacfc4\lib-macros`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   0.369206100s  INFO prepare_target{force=false package_id=mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn) target="mathfn"}: cargo::core::compiler::fingerprint: fingerprint dirty for mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("mathfn", ["lib"], "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs", Edition2024) }
+   0.369249900s  INFO prepare_target{force=false package_id=mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn) target="mathfn"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "C:\\sandbox\\matrix\\matlib\\macros\\target\\debug\\.fingerprint\\mathfn-b1e5327e40827418\\dep-lib-mathfn", reference_mtime: FileTime { seconds: 13429233431, nanos: 206753800 }, stale: "C:\\sandbox\\matrix\\matlib\\mathfn\\src\\lib.rs", stale_mtime: FileTime { seconds: 13429233434, nanos: 338979700 } }))
+   0.380299500s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint: fingerprint error for macros v0.1.0 (C:\sandbox\matrix\matlib\macros)/Check { test: true }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("macros", ["proc-macro"], "C:\\sandbox\\matrix\\matlib\\macros\\src\\lib.rs", Edition2024) }
+   0.380368700s  INFO prepare_target{force=false package_id=macros v0.1.0 (C:\sandbox\matrix\matlib\macros) target="macros"}: cargo::core::compiler::fingerprint:     err: failed to read `C:\sandbox\matrix\matlib\macros\target\debug\.fingerprint\macros-c7d399288512b4a5\test-lib-macros`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
     Checking mathfn v0.1.0 (C:\sandbox\matrix\matlib\mathfn)
     Checking macros v0.1.0 (C:\sandbox\matrix\matlib\macros)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.51s
+error: could not compile `macros` (lib) due to 5 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `macros` (lib test) due to 5 previous errors

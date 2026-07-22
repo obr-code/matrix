@@ -6,8 +6,6 @@ use std::cmp::{ Ord, Ordering };
 
 use num_traits::NumCast;
 
-use utils::Numeric;
-
 // -- Utils -- //
 
 

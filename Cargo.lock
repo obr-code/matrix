@@ -157,6 +157,7 @@ name = "mathfn"
 version = "0.1.0"
 dependencies = [
  "matrix",
+ "num-traits",
  "serde",
  "sorted-vec",
  "utils",
