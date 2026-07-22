@@ -1,2 +1,3 @@
-pub mod collections;
-pub mod maths;
+pub use macros;
+pub use mathfn;
+pub use matrix;

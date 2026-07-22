@@ -132,4 +132,14 @@ macro_rules! btreeset {
 	}
 }
 
-
+#[macro_export]
+macro_rules! sortedvec {
+	( $( $val:expr ),* $(,)? ) => {
+		{
+			use sorted_vec::SortedVec;
+			let mut vec = SortedVec::new();
+			$( vec.push($val); ),*
+			vec
+		}
+	}
+}

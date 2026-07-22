@@ -1,37 +1,87 @@
-use mathfn::MathFn;
+use mathfn::MathTree;
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{BinOp, ExprBinary, Ident};
-use syn::{Attribute, Expr, ExprAssign, parse_macro_input, parse_quote};
-use std::collections::HashSet;
-use utils::hashset;
+use std::collections::{HashMap};
+use std::hash::Hash;
+use syn::{BinOp, Expr, parse_macro_input};
 
-#[proc_macro]
-pub fn compute(input: TokenStream) -> TokenStream {
-	let expr = parse_macro_input!(input as Expr);
 
-	fn wrap_ref(expr: Expr) -> Expr {
+#[derive(Eq, Hash, PartialEq)]
+enum Variable {
+	Lit(syn::Lit),
+	Path(syn::Path),
+}
+
+#[derive(Default)]
+struct Parser<T> {
+	map: HashMap<Variable, T>,
+	cnt: T,
+}
+impl Parser<u8> {
+	fn parse(&mut self, expr: Expr) -> MathTree<u8> {
 		match expr {
+			Expr::Lit(lit) => {
+				let key = Variable::Lit(lit.lit);
+				if let Some(&id) = self.map.get(&key) {
+					MathTree::Value(id)
+				} else {
+					self.map.insert(key, self.cnt);
+					self.cnt += 1;
+					MathTree::Value(self.cnt - 1)
+				}
+			},
 			Expr::Path(path) => {
-				parse_quote!(&#path)
+				let key = Variable::Path(path.path);
+				if let Some(&id) = self.map.get(&key) {
+					MathTree::Value(id)
+				} else {
+					self.map.insert(key, self.cnt);
+					self.cnt += 1;
+					MathTree::Value(self.cnt - 1)
+				}
 			},
-			Expr::Binary(mut bin) => {
-				bin.left = Box::new(wrap_ref(*bin.left));
-				bin.right = Box::new(wrap_ref(*bin.right));
-				Expr::Binary(bin)
-			},
-			Expr::Unary(mut unary) => {
-				unary.expr = Box::new(wrap_ref(*unary.expr));
-				Expr::Unary(unary)
-			},
-			Expr::Paren(mut paren) => {
-				paren.expr = Box::new(wrap_ref(*paren.expr));
-				Expr::Paren(paren)
-			},
-			other => other,
+			Expr::Binary(bin) => {
+				MathTree::BinOp(
+					match bin.op {
+						BinOp::Add(_) => mathfn::BinOp::Add {
+							l: Box::new(self.parse(*bin.left)), 
+							r: Box::new(self.parse(*bin.right)),
+						},
+						BinOp::Sub(_) => mathfn::BinOp::Sub {
+							l: Box::new(self.parse(*bin.left)), 
+							r: Box::new(self.parse(*bin.right)),
+						},
+						BinOp::Mul(_) => mathfn::BinOp::Mul {
+							l: Box::new(self.parse(*bin.left)), 
+							r: Box::new(self.parse(*bin.right)),
+						},
+						BinOp::Div(_) => mathfn::BinOp::Div {
+							l: Box::new(self.parse(*bin.left)), 
+							r: Box::new(self.parse(*bin.right)),
+						},
+						_ => panic!(),
+					}
+				)
+			}
+			_ => panic!(),
 		}
 	}
+}
 
-	let expr = wrap_ref(expr);
-	quote!(#expr).into()
+#[proc_macro]
+pub fn math_tree(input: TokenStream) -> TokenStream {
+	let expr = parse_macro_input!(input);
+
+	let mut parser = Parser::<u8>::default();
+	let math_tree = parser.parse(expr);
+
+	let bytes = bincode::serialize(&math_tree).unwrap();
+	let byte_tokens = proc_macro2::Literal::byte_string(&bytes);
+
+	quote! {
+		{
+			let bytes = #byte_tokens;
+			bincode::deserialize::<MathTree<u8>>(bytes).unwrap()
+		}
+	}.into()
 }

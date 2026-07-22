@@ -7,6 +7,9 @@ edition = "2024"
 proc-macro = true
 
 [dependencies]
-mathfn = { path = ".." }
+expended = { path = ".." }
 ordered-float = "5.3.0"
+quote = "1"
+proc-macro2 = "1"
 syn = { version = "2", features = ["full", "extra-traits"] }
+utils = { path = "../../utils" }
