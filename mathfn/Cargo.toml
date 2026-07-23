@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ethnum = "1.5.3"
 matrix = { path = "../matrix" }
 num-traits = "0.2"
 serde = { version = "1.0.229", features = ["derive"] }
 sorted-vec = "0.8.11"
 utils = { path = "../utils" }
+ux = "0.1.6"

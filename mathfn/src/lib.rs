@@ -1,14 +1,154 @@
-use num_traits::Unsigned;
 use serde::{Serialize, Deserialize};
 use sorted_vec::SortedVec;
 use std::fmt::Debug;
-use std::hash::Hash;
-use std::ops::{ Add, BitAnd, Div, Mul, Neg, Shl, Shr, Sub };
+use std::ops::*;
 use utils::sortedvec;
+use ux::u4;
+use ethnum::{uint, u256};
 
+use private;
+mod private {
+	use crate::{Signed, SWAR, I32x4, I64x4, I128x8, I256x8};
+	use std::fmt::Debug;
+	use std::ops::*;
+	use ux::u4;
+	use ethnum::{uint, u256};
 
+	pub trait Block<U: SWAR>:
+		Clone +
+		Copy +
+		Debug +
+		Ord +
+		Sized +
+		Add<Output=Self> +
+		Not<Output=Self> +
+		Sub<Output=Self> +
+		Shl<u32, Output=Self> +
+		Shr<u32, Output=Self> +
+		BitAnd<Output=Self> +
+		BitAndAssign +
+		BitOrAssign
+	{
+		const BITS: u32;
+		const MAX: Self;
+		/// The bits in which all independend quantities are set to zeros.
+		/// 
+		/// For example, a `I32x4`` stores 32 bits of 4-bits independent i4 quantities.
+		/// 
+		/// # # Warning
+		/// Unconventionnal signed representation.
+		/// Instead of bit-inversion, it uses leveraging.
+		/// To get the 'true' value in X-bits, substract it by 2^(X-1).
+		const ZERO: Self;
+		fn as_chunk(&self) -> U::Chunk;
+	}
+	
+	impl Block<I32x4> for u32 {
+		const BITS: u32 = 32;
+		const MAX: Self = u32::MAX;
+		const ZERO: Self = 0x_8888_8888;
+		fn as_chunk(&self) -> <I32x4 as SWAR>::Chunk {
+			u4::new(*self as u8)
+		}
+	}
+	impl Block<I64x4> for u64 {
+		const BITS: u32 = 64;
+		const MAX: Self = u64::MAX;
+		const ZERO: Self = 0x_8888_8888_8888_8888;
+		fn as_chunk(&self) -> <I64x4 as SWAR>::Chunk {
+			u4::new(*self as u8)
+		}
+	}
+	impl Block<I128x8> for u128 {
+		const BITS: u32 = 128;
+		const MAX: Self = u128::MAX;
+		const ZERO: Self = 0x_8080_8080_8080_8080_8080_8080_8080_8080;
+		fn as_chunk(&self) -> <I128x8 as SWAR>::Chunk {
+			*self as u8
+		}
+	}
+	impl Block<I256x8> for u256 {
+		const BITS: u32 = 256;
+		const MAX: Self = u256::MAX;
+		const ZERO: Self = uint!("0x_8080_8080_8080_8080_8080_8080_8080_8080_8080_8080_8080_8080_8080_8080_8080_8080");
+		fn as_chunk(&self) -> <I256x8 as SWAR>::Chunk {
+			self.as_u8()
+		}
+	}
+
+	pub trait Chunk<U: SWAR>:
+		Clone +
+		Copy +
+		Debug +
+		Ord +
+		Sized +
+		Add<Output=Self> +
+		Not<Output=Self> +
+		Sub<Output=Self> +
+		Shl<u32, Output=Self> +
+		Shr<u32, Output=Self> +
+		BitAnd<Output=Self> +
+		BitAndAssign +
+		BitOrAssign
+	{
+		const BITS: u32;
+		const MAX: Self;
+		const ZERO: Self;
+		fn as_block(&self) -> U::Block;
+		fn signed(&self) -> Signed<Self>;
+	}
+
+	impl Chunk<I32x4> for u4 {
+		const BITS: u32 = 4;
+		const MAX: Self = u4::new(0b1111);
+		const ZERO: Self = u4::new(0b1000);
+		fn as_block(&self) -> <I32x4 as SWAR>::Block {
+			u32::from(*self)
+		}
+		fn signed(&self) -> Signed<Self> {
+			if *self < <Self as Chunk<I32x4>>::ZERO {
+				Signed::Neg(
+					<Self as Chunk<I32x4>>::ZERO - *self
+				)
+			} else {
+				Signed::Pos(
+					*self - <Self as Chunk<I32x4>>::ZERO
+				)
+			}
+		}
+	}
+	impl Chunk<I64x4> for u4 {
+		const BITS: u32 = 4;
+		const MAX: Self = u4::new(0b1111);
+		const ZERO: Self = u4::new(0b1000);
+		fn as_block(&self) -> <I64x4 as SWAR>::Block {
+			u64::from(*self)
+		}
+	}
+	impl Chunk<I128x8> for u8 {
+		const BITS: u32 = 8;
+		const MAX: Self = 0b1111_1111;
+		const ZERO: Self = 0b1000_0000;
+		fn as_block(&self) -> <I128x8 as SWAR>::Block {
+			u128::from(*self)
+		}
+	}
+	impl Chunk<I256x8> for u8 {
+		const BITS: u32 = 8;
+		const MAX: Self = 0b1111_1111;
+		const ZERO: Self = 0b1000_0000;
+		fn as_block(&self) -> <I256x8 as SWAR>::Block {
+			u256::from(*self)
+		}
+	}
+}
+
+/// SIMD: 'Single Instruction, Multiple Data'
+/// 
+/// SWAR: 'SIMD Within A Register'
+/// 
 /// # # Description
-/// The `SerialFormat` is a 'way' of storing data in bytes.
+/// A 'way' of storing multiple data in a single register in order to perform SIMD.
 /// 
 /// For example, a `I32x4`` is a 32-bit value where each 4-bits store a independent i4 quantity.
 /// 
@@ -17,29 +157,24 @@ use utils::sortedvec;
 /// # # Warning
 /// Unconventionnal signed representation.
 /// Instead of bit-inversion, it uses leveraging.
-pub trait SerialFormat: Copy + Debug + Default + Ord {
-	type Support: Copy + Ord + Unsigned + TryFrom<u128> + Into<u128>;
+pub trait SWAR: Copy + Debug + Default + Ord {
+	/// The unsigned type holding the bits of all independent variables.
+	type Block: private::Block<Self>;
+	/// One single independant variables
+	type Chunk: private::Chunk<Self>;
 
-	/// Return the SF.
-	/// 
-	/// # # Example
-	/// ```
-	/// let sf = I32x4::sf();
-	/// assert_eq!((32, 4), sf);
-	/// ```
-	fn sf() -> (u8, u8);
-
-	/// Return the bits in which all independend quantities are set to zeros.
-	/// 
-	/// For example, a `I32x4`` stores 32 bits of 4-bits independent i4 quantities.
-	/// 
-	/// # # Warning
-	/// Unconventionnal signed representation.
-	/// Instead of bit-inversion, it uses leveraging.
-	/// To get the 'true' value in X-bits, substract it by 2^(X-1).
-	fn zeros() -> Self::Support;
+	fn get(block: Self::Block, index: u32) -> Self::Chunk {
+		use private::{Block, Chunk};
+		Self::Chunk::MAX & (block >> (index * Self::Chunk::BITS)).as_chunk()
+	}
+	fn set(block: &mut Self::Block, index: u32, value: Self::Chunk) {
+		use private::{Block, Chunk};
+		let bitshift = index * Self::Chunk::BITS;
+		let bitmask = Self::Chunk::MAX.as_block() << bitshift;
+		*block &= !bitmask;
+		*block |= value.as_block() << bitshift;
+	}
 }
-
 
 /// 8 signed 4-bits on 32 bits.
 #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd,)]
@@ -49,38 +184,33 @@ pub struct I32x4 {}
 #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd,)]
 pub struct I64x4 {}
 
-/// 32 signed 4-bits on 128 bits.
-#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd,)]
-pub struct I128x4 {}
-
 /// 16 signed 8-bits on 128 bits.
 #[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd,)]
 pub struct I128x8 {}
 
+/// 32 signed 8-bits on 256 bits.
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd,)]
+pub struct I256x8 {}
 
-impl SerialFormat for I32x4 {
-	type Support = u32;
-	fn sf() -> (u8, u8) { (32,4) }
-	fn zeros() -> Self::Support { 0x_8888_8888 }
+impl SWAR for I32x4 {
+	type Block = u32;
+	type Chunk = u4;
 }
-impl SerialFormat for I64x4 {
-	type Support = u64;
-	fn sf() -> (u8, u8) { (64,4) }
-	fn zeros() -> Self::Support { 0x_8888_8888_8888_8888 }
+impl SWAR for I64x4 {
+	type Block = u64;
+	type Chunk = u4;
 }
-impl SerialFormat for I128x4 {
-	type Support = u128;
-	fn sf() -> (u8, u8) { (128,4) }
-	fn zeros() -> Self::Support { 0x_8888_8888_8888_8888_8888_8888_8888_8888 }
+impl SWAR for I128x8 {
+	type Block = u128;
+	type Chunk = u8;
 }
-impl SerialFormat for I128x8 {
-	type Support = u128;
-	fn sf() -> (u8, u8) { (128,8) }
-	fn zeros() -> Self::Support { 0x_8080_8080_8080_8080_8080_8080_8080_8080 }
+impl SWAR for I256x8 {
+	type Block = u256;
+	type Chunk = u8;
 }
 
 
-/// A product of unknown values represented with a `SerialFormat`.
+/// A product of unknown values represented within a register.
 /// Each independent value in the 'SF's support' represents a power.
 /// 
 /// For example, given the abstract 'pows' I32x4, let's represent it { pows = \[-1, 3, 5, ..., -6\], vars = \[a, b, c, ..., h\] }
@@ -98,58 +228,60 @@ impl SerialFormat for I128x8 {
 /// \[1, 2, -1, 0, 0, 0, 0, 0\]
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
-pub struct MulTable<SF: SerialFormat>(SF::Support);
+pub struct Register<U: SWAR>(U::Block);
 
-impl<SF: SerialFormat> Default for MulTable<SF> {
-	fn default() -> Self {
-		MulTable(SF::zeros())
+/// Transform a SWAR-Register to a vector containing its chunks.
+impl<U: SWAR> From<Register<U>> for Vec<i32> {
+	fn from(value: Register<U>) -> Self {
+		use private::{Block, Chunk};
+		let mut result = vec![];
+		for idx in 0..U::Block::BITS / U::Chunk::BITS {
+			result.push(
+				{
+					let inner = U::get(value)
+				}
+				U::get(value.0, idx) as i32
+				-
+				U::Chunk::ZERO
+			);
+		}
+		result
 	}
 }
 
-impl<SF: SerialFormat> Mul for MulTable<SF> {
+impl<U: SWAR> Mul for Register<U> {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self {
-		if self.0 >= SF::zeros() {
-			MulTable((self.0 - SF::zeros()) + rhs.0)
-		} else if rhs.0 >= SF::zeros() {
-			MulTable((rhs.0 - SF::zeros()) + self.0)
+		if self.0 >= U::LEVERAGE {
+			Register((self.0 - U::LEVERAGE) + rhs.0)
+		} else if rhs.0 >= U::LEVERAGE {
+			Register((rhs.0 - U::LEVERAGE) + self.0)
 		} else {
-			MulTable((self.0 + rhs.0) - SF::zeros())
+			Register((self.0 + rhs.0) - U::LEVERAGE)
 		}
 	}
 }
 
-impl<SF: SerialFormat> Div for MulTable<SF> {
+impl<U: SWAR> Div for Register<U> {
 	type Output = Self;
 
 	fn div(self, rhs: Self) -> Self {
-		if self.0 < SF::zeros() {
-			MulTable((self.0 + SF::zeros()) - rhs.0)
-		} else if rhs.0 < SF::zeros() {
-			MulTable((rhs.0 + SF::zeros()) - self.0)
+		if self.0 < U::LEVERAGE {
+			Register((self.0 + U::LEVERAGE) - rhs.0)
+		} else if rhs.0 < U::LEVERAGE {
+			Register((rhs.0 + U::LEVERAGE) - self.0)
 		} else if self.0 > rhs.0 {
-			MulTable((self.0 - rhs.0) + SF::zeros())
+			Register((self.0 - rhs.0) + U::LEVERAGE)
 		} else {
-			MulTable((rhs.0 - self.0) + SF::zeros())
+			Register((rhs.0 - self.0) + U::LEVERAGE)
 		}
 	}
 }
 
-impl<SF: SerialFormat> Debug for MulTable<SF> {
+impl<U: SWAR> Debug for Register<U> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let (len, step) = SF::sf();
-		let bitmask = u8::MAX as u32;
-		let inner = self.0.into();
-		
-		write!(f, "[")?;
-		for shift in (0..len).step_by(step as usize) {
-			write!(f, "{:?}", ((inner >> shift) as u32) & bitmask)?;
-			if shift != (len - step) {
-				write!(f, ", ")?;
-			}
-		}
-		write!(f, "]")
+		write!(f, "{:?}", Vec::from(*self))
 	}
 }
 
@@ -190,7 +322,7 @@ impl<T: Copy> Neg for Signed<T> {
 	}
 }
 
-impl<SF: SerialFormat> Mul for Signed<MulTable<SF>> {
+impl<U: SWAR> Mul for Signed<Register<U>> {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self::Output {
@@ -210,7 +342,7 @@ impl<SF: SerialFormat> Mul for Signed<MulTable<SF>> {
 	}
 }
 
-impl<SF: SerialFormat> Div for Signed<MulTable<SF>> {
+impl<U: SWAR> Div for Signed<Register<U>> {
 	type Output = Self;
 
 	fn div(self, rhs: Self) -> Self::Output {
@@ -236,9 +368,9 @@ impl<SF: SerialFormat> Div for Signed<MulTable<SF>> {
 /// todo!()
 #[allow(non_camel_case_types)]
 #[derive(Debug, Default)]
-pub struct Expended<SF: SerialFormat>(SortedVec<Signed<MulTable<SF>>>);
+pub struct Expended<U: SWAR>(SortedVec<Signed<Register<U>>>);
 
-impl<SF: SerialFormat> Add for Expended<SF> {
+impl<U: SWAR> Add for Expended<U> {
 	type Output = Self;
 
 	fn add(self, rhs: Self) -> Self::Output {
@@ -267,7 +399,7 @@ impl<SF: SerialFormat> Add for Expended<SF> {
 	}
 }
 
-impl<SF: SerialFormat> Sub for Expended<SF> {
+impl<U: SWAR> Sub for Expended<U> {
 	type Output = Self;
 
 	fn sub(self, rhs: Self) -> Self::Output {
@@ -296,7 +428,7 @@ impl<SF: SerialFormat> Sub for Expended<SF> {
 	}
 }
 
-impl<SF: SerialFormat> Mul for Expended<SF> {
+impl<U: SWAR> Mul for Expended<U> {
 	type Output = Self;
 
 	fn mul(self, rhs: Self) -> Self::Output {
@@ -310,7 +442,7 @@ impl<SF: SerialFormat> Mul for Expended<SF> {
 	}
 }
 
-impl<SF: SerialFormat> Div for Expended<SF> {
+impl<U: SWAR> Div for Expended<U> {
 	type Output = Self;
 
 	fn div(self, rhs: Self) -> Self::Output {
@@ -324,13 +456,17 @@ impl<SF: SerialFormat> Div for Expended<SF> {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+
+/// Similar to a token tree, but providing only mathematical expressions.
+/// 
+/// It is used to perform `TokenStream` -> [Expended] conversions.
+#[derive(Debug, Serialize, Deserialize)]
 pub enum MathTree {
 	BinOp(BinOp),
 	Index(usize),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum BinOp {
 	Add { l: Box<MathTree>, r: Box<MathTree> },
 	Sub { l: Box<MathTree>, r: Box<MathTree> },
@@ -338,17 +474,17 @@ pub enum BinOp {
 	Div { l: Box<MathTree>, r: Box<MathTree> },
 }
 
-impl<SF: SerialFormat> From<MathTree> for Expended<SF> {
+impl<U: SWAR> From<MathTree> for Expended<U> {
 	fn from(value: MathTree) -> Self {
 		match value {
 			MathTree::Index(idx) => Expended(
 				sortedvec![
 					Signed::Pos(
-						MulTable(
-							if let Ok(inner) = SF::Support::try_from(1u128 << (idx << 2)) {
-								SF::zeros() + inner
-							} else {
-								panic!()
+						Register(
+							{
+								let mut register = U::LEVERAGE;
+								
+								register
 							}
 						)
 					)

@@ -9,14 +9,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
+name = "ethnum"
+version = "1.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40404c3f5f511ec4da6fe866ddf6a717c309fdbb69fbbad7b0f3edab8f2e835f"
+
+[[package]]
 name = "mathfn"
 version = "0.1.0"
 dependencies = [
+ "ethnum",
  "matrix",
  "num-traits",
  "serde",
  "sorted-vec",
  "utils",
+ "ux",
 ]
 
 [[package]]
@@ -114,3 +122,9 @@ dependencies = [
  "num-traits",
  "sorted-vec",
 ]
+
+[[package]]
+name = "ux"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b59fc5417e036e53226bbebd90196825d358624fd5577432c4e486c95b1b096"
